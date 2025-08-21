@@ -1,34 +1,29 @@
-"""Test configuration and fixtures for fluvius_interim tests."""
 
 import json
-import pytest
+
+from fluvius.data import UUID_GENF
+from fluvius.fastapi.auth import FluviusAuthProfileProvider
+from fluvius_interlink import Workflow, Stage, Step, Role, st_connect, wf_connect, transition, FINISH_STATE
+
 from typing import Optional
 from httpx import AsyncClient
-from fastapi import Request
-from types import SimpleNamespace
-
-from fluvius_interim import logger, config
-from fluvius_interim.domain import WorkflowDomain, WorkflowQueryManager
-from fluvius_interim import Workflow, Stage, Step, Role, st_connect, wf_connect, transition, FINISH_STATE
-from fluvius.data import UUID_GENF
 from fluvius.data.serializer.json_encoder import FluviusJSONEncoder
-from fluvius.fastapi.auth import FluviusAuthProfileProvider
+from fastapi import Request
 
-
-# Test Data 
+# Test Data
 st01 = UUID_GENF('S101')
 wf01 = UUID_GENF('101')
 
 
 class SampleProcess(Workflow):
-    """Sample workflow description for testing"""
+    ''' Sample workflow description ... '''
 
     class Meta:
         title = "Sample Process"
         revision = 1
 
-    Stage01 = Stage('Stage 01', desc="I am great")
-    Stage02 = Stage('Stage 02', desc="I am bigger")
+    Stage01 = Stage('Stage 01', desc="Iam great")
+    Stage02 = Stage('Stage 02', desc="Iam bigger")
     Role01 = Role(title="Role 01")
 
     def on_start(wf_state):
@@ -36,15 +31,15 @@ class SampleProcess(Workflow):
         step3.transit('MOON')
 
     class Step01(Step, name='Step 03', stage=Stage01):
-        """This is a sample step. 2-X"""
+        """ This is a sample step. 2-X """
         pass
 
     class Step02(Step, name="step-02a", stage=Stage01, multiple=True):
-        """This is a sample step. 2-X"""
+        """ This is a sample step. 2-X """
         pass
 
     class Step02b(Step, stage=Stage01, multiple=True):
-        """This is a sample step. 2-B"""
+        """ This is a sample step. 2-B """
         __title__ = "Step2B"
 
     class Step03(Step, name="Step 03", stage=Stage01):
@@ -76,18 +71,16 @@ class SampleProcess(Workflow):
 
 
 class FluviusMockProfileProvider(FluviusAuthProfileProvider):
-    """Mock authentication provider for testing"""
-    
     TEMPLATE = {
         "exp": 1753419182,
         "iat": 1753418882,
         "auth_time": 1753418870,
         "jti": "1badb45d-34cd-42ba-8585-8ff5a5b707d3",
         "iss": "https://id.adaptive-bits.com/auth/realms/dev-1.fluvius.io",
-        "aud": "fluvius_interim_app",
+        "aud": "sample_app",
         "sub": "44d2f8cb-0d46-4323-95b9-c5b4bdbf6205",
         "typ": "ID",
-        "azp": "fluvius_interim_app",
+        "azp": "sample_app",
         "nonce": "Ggeg9O9qcHthA1idx8nE",
         "session_state": "8889f832-1d59-4886-8f08-1d613c793d38",
         "at_hash": "51a1KP4pfSKNiBA6K0Du1g",
@@ -101,14 +94,14 @@ class FluviusMockProfileProvider(FluviusAuthProfileProvider):
         "email": "johndoe@adaptive-bits.com",
         "realm_access": {
             "roles": [
-                "default-roles-dev-1.fluvius.io",
-                "offline_access",
-                "uma_authorization"
+            "default-roles-dev-1.fluvius.io",
+            "offline_access",
+            "uma_authorization"
             ]
         },
         "resource_access": {
             "account": {
-                "roles": ["manage-account", "manage-account-links", "view-profile"]
+            "roles": ["manage-account", "manage-account-links", "view-profile"]
             }
         }
     }
@@ -125,88 +118,15 @@ class FluviusMockProfileProvider(FluviusAuthProfileProvider):
             raise ValueError("Invalid JSON in authorization header")
 
 
+# Custom AsyncClient with FluviusJSONEncoder
 class FluviusAsyncClient(AsyncClient):
     """AsyncClient that uses FluviusJSONEncoder for JSON serialization"""
-    
+
     async def request(self, method, url, **kwargs):
         # If json data is provided, serialize it with FluviusJSONEncoder
         if 'json' in kwargs:
             kwargs['content'] = json.dumps(kwargs.pop('json'), cls=FluviusJSONEncoder)
             kwargs['headers'] = kwargs.get('headers') or {}
             kwargs['headers'].setdefault('Content-Type', 'application/json')
-        
+
         return await super().request(method, url, **kwargs)
-
-
-@pytest.fixture(scope="session")
-async def workflows():
-    """Fixture for storing workflow instances between tests"""
-    workflows = SimpleNamespace()
-    return workflows
-
-
-@pytest.fixture
-def sample_workflow_class():
-    """Fixture providing the sample workflow class for testing"""
-    return SampleProcess
-
-
-@pytest.fixture
-def mock_auth_provider():
-    """Fixture providing the mock authentication provider"""
-    return FluviusMockProfileProvider()
-
-
-@pytest.fixture
-def test_client():
-    """Fixture providing the custom async client"""
-    return FluviusAsyncClient
-
-
-@pytest.fixture
-def workflow_domain():
-    """Fixture providing WorkflowDomain instance"""
-    return WorkflowDomain()
-
-
-@pytest.fixture
-def query_manager():
-    """Fixture providing WorkflowQueryManager instance"""
-    return WorkflowQueryManager()
-
-
-# Test IDs and selectors
-@pytest.fixture
-def test_selector():
-    """Test step selector ID"""
-    return st01
-
-
-@pytest.fixture
-def test_workflow_id():
-    """Test workflow ID"""
-    return wf01
-
-
-@pytest.fixture
-def test_resource_id():
-    """Test resource ID"""
-    return UUID_GENF('test-resource-001')
-
-
-@pytest.fixture
-def test_user_id():
-    """Test user ID"""
-    return UUID_GENF('test-user-001')
-
-
-@pytest.fixture
-def test_step_id():
-    """Test step ID"""
-    return UUID_GENF('test-step-001')
-
-
-@pytest.fixture
-def test_route_id():
-    """Test route ID"""
-    return UUID_GENF('test-route-001')
